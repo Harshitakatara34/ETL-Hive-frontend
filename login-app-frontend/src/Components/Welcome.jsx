@@ -13,37 +13,65 @@ const Welcome = () => {
   });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [currentLeadId, setCurrentLeadId] = useState(null);
 
   const handleLeadChange = (e) => {
     setLeadDetails({ ...leadDetails, [e.target.name]: e.target.value });
   };
 
   const handleLeadSubmit = async (e) => {
-    console.log("working");
-    console.log(leadDetails);
+    console.log("working..........");
     e.preventDefault();
-    try {
-      const token = localStorage.getItem("token");
-      await axios.post(
-        "https://etlhive-project-backend.onrender.com/api/auth/leads",
-        leadDetails,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      toast.success("Lead created successfully.");
-      setLeadDetails({ name: "", email: "", number: "", product: "A" });
-      fetchLeads();
-    } catch (error) {
-      toast.error("Lead creation failed.");
+    const token = localStorage.getItem("token");
+
+    if (editMode) {
+      // Update lead
+      try {
+        await axios.put(
+          `https://etlhive-project-backend.onrender.com/api/auth/leads/${currentLeadId}`,
+          leadDetails,
+          {
+            headers: {
+              Authorization: `${token}`,
+            },
+          }
+        );
+        toast.success("Lead updated successfully.");
+        setEditMode(false);
+        setCurrentLeadId(null);
+        setLeadDetails({ name: "", email: "", number: "", product: "A" });
+        fetchLeads();
+      } catch (error) {
+        toast.error("Lead update failed.");
+      }
+    } else {
+      console.log("leadDetails", leadDetails);
+
+      // Create lead
+      try {
+        await axios.post(
+          "https://etlhive-project-backend.onrender.com/api/auth/leads/",
+          leadDetails,
+          {
+            headers: {
+              Authorization: `${token}`,
+            },
+          }
+        );
+        toast.success("Lead created successfully.");
+        setLeadDetails({ name: "", email: "", number: "", product: "A" });
+        fetchLeads();
+      } catch (error) {
+        toast.error("Lead creation failed.");
+      }
     }
   };
 
   const fetchLeads = async () => {
     try {
       const token = localStorage.getItem("token");
+      // console.log("token", token);
       const response = await axios.get(
         "https://etlhive-project-backend.onrender.com/api/auth/leads",
         {
@@ -59,6 +87,35 @@ const Welcome = () => {
       setLeads(response.data);
     } catch (error) {
       toast.error("Failed to fetch leads.");
+    }
+  };
+
+  const handleEditClick = (lead) => {
+    setLeadDetails({
+      name: lead.name,
+      email: lead.email,
+      number: lead.number,
+      product: lead.product,
+    });
+    setEditMode(true);
+    setCurrentLeadId(lead._id);
+  };
+
+  const handleDeleteClick = async (leadId) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(
+        `https://etlhive-project-backend.onrender.com/api/auth/leads/${leadId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      toast.success("Lead deleted successfully.");
+      fetchLeads();
+    } catch (error) {
+      toast.error("Failed to delete lead.");
     }
   };
 
@@ -121,7 +178,7 @@ const Welcome = () => {
             </select>
           </label>
           <button type="submit" className="-mt-8">
-            Create Lead
+            {editMode ? "Update Lead" : "Create Lead"}
           </button>
         </form>
       </div>
@@ -160,8 +217,14 @@ const Welcome = () => {
                   <td>{lead.email}</td>
                   <td>{lead.number}</td>
                   <td>{lead.product}</td>
-                  <td>Edit</td>
-                  <td>Delete</td>
+                  <td>
+                    <button onClick={() => handleEditClick(lead)}>Edit</button>
+                  </td>
+                  <td>
+                    <button onClick={() => handleDeleteClick(lead._id)}>
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
